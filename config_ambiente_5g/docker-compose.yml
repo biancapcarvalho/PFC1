@@ -1,0 +1,300 @@
+services:
+  # ============================================================================
+  # Database
+  # ============================================================================
+  b-mongodb:
+    image: mongo:7.0
+    container_name: b-mongodb
+    hostname: mongodb
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.20
+        aliases:
+          - mongo
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    environment:
+      - TZ=America/Recife
+      - MONGO_INITDB_DATABASE=open5gs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # NFs do Plano de Controle (Open5GS)
+  # ============================================================================
+
+  b-amf:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-amf
+    hostname: amf
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-amfd -c /etc/open5gs/amf.yaml
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.11
+      b-net-n2:
+        ipv4_address: 10.120.0.11
+    volumes:
+      - ./config_open5gs/amf.yaml:/etc/open5gs/amf.yaml
+    restart: unless-stopped
+    depends_on:
+      b-mongodb:
+        condition: service_healthy
+      b-nrf:
+        condition: service_started
+
+  b-smf:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-smf
+    hostname: smf
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-smfd -c /etc/open5gs/smf.yaml
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.12
+      b-net-n4:
+        ipv4_address: 10.140.0.12
+    volumes:
+      - ./config_open5gs/smf.yaml:/etc/open5gs/smf.yaml
+    restart: unless-stopped
+    depends_on:
+      b-mongodb:
+        condition: service_healthy
+      b-nrf:
+        condition: service_started
+
+  b-nrf:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-nrf
+    hostname: nrf
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-nrfd
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.10
+    restart: unless-stopped
+
+  b-scp:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-scp
+    hostname: scp
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-scpd
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.200
+    depends_on:
+      - b-nrf
+    restart: unless-stopped
+
+  b-udr:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-udr
+    hostname: udr
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-udrd
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.15
+    restart: unless-stopped
+    depends_on:
+      b-mongodb:
+        condition: service_healthy
+      b-nrf:
+        condition: service_started
+
+  b-udm:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-udm
+    hostname: udm
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-udmd
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.14
+    restart: unless-stopped
+    depends_on:
+      b-mongodb:
+        condition: service_healthy
+      b-nrf:
+        condition: service_started
+
+  b-ausf:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-ausf
+    hostname: ausf
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-ausfd
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.13
+    restart: unless-stopped
+    depends_on:
+      b-mongodb:
+        condition: service_healthy
+      b-nrf:
+        condition: service_started
+
+  b-pcf:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-pcf
+    hostname: pcf
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-pcfd
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.16
+    restart: unless-stopped
+    depends_on:
+      b-mongodb:
+        condition: service_healthy
+      b-nrf:
+        condition: service_started
+
+  b-nssf:
+    image: gradiant/open5gs:2.7.6
+    container_name: b-5gc-nssf
+    hostname: nssf
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-nssfd
+    networks:
+      b-net-sbi:
+        ipv4_address: 10.110.0.17
+    restart: unless-stopped
+    depends_on:
+      b-mongodb:
+        condition: service_healthy
+      b-nrf:
+        condition: service_started
+
+  # ============================================================================
+  # UPF (Open5GS)
+  # ============================================================================
+  b-upf:
+    build: ./config_upf
+    container_name: b-upf
+    command: /entrypoint.sh /opt/open5gs/bin/open5gs-upfd -c /etc/open5gs/upf.yaml
+    networks:
+      b-net-n3:
+        ipv4_address: 10.130.0.21
+      b-net-n4:
+        ipv4_address: 10.140.0.21
+      b-net-n6:
+        ipv4_address: 10.150.0.21
+    volumes:
+      - ./config_upf/upf.yaml:/etc/open5gs/upf.yaml
+      - /sys/fs/bpf:/sys/fs/bpf
+      - /lib/modules:/lib/modules:ro
+      - /sys/kernel/btf:/sys/kernel/btf:ro
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+
+  # ============================================================================
+  # Data Network (DN) - Simula rede externa/internet
+  # ============================================================================
+  b-dn:
+    image: alpine:latest
+    container_name: b-dn
+    hostname: dn
+    networks:
+      b-net-n6:
+        ipv4_address: 10.150.0.100
+    command: >
+      sh -c "apk add --no-cache iperf3 iputils && ip route add 10.45.0.0/16 via 10.150.0.21 && tail -f /dev/null"
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  # ============================================================================
+  # RAN (Radio Access Network) - UERANSIM
+  # ============================================================================
+  b-ueransim-gnb:
+    build: ./config_ueransim
+    container_name: b-gnb
+    command: ./nr-gnb -c /ueransim/config/gnb.yaml
+    networks:
+      b-net-n3:
+        ipv4_address: 10.130.0.100
+      b-net-n2:
+        ipv4_address: 10.120.0.100
+    volumes:
+      - ./config_ueransim/gnb.yaml:/ueransim/config/gnb.yaml
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    depends_on:
+      - b-amf
+
+  b-ueransim-ue:
+    build: ./config_ueransim
+    container_name: b-ue
+    command: ./nr-ue -c /ueransim/config/ue.yaml
+    networks:
+      b-net-n2:
+        ipv4_address: 10.120.0.200
+    volumes:
+      - ./config_ueransim/ue.yaml:/ueransim/config/ue.yaml
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - "/dev/net/tun:/dev/net/tun"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - b-ueransim-gnb
+
+# ============================================================================
+# Redes Docker
+# ============================================================================
+
+networks:
+  # Interface de controle (SBI) - Comunicação entre NFs do plano de controle
+  b-net-sbi:
+    driver: bridge
+    name: interface-sbi
+    ipam:
+      config:
+        - subnet: 10.110.0.0/16
+          gateway: 10.110.0.1
+
+  # Interface N2 - NGAP entre gNB e AMF
+  b-net-n2:
+    driver: bridge
+    name: interface-n2
+    ipam:
+      config:
+        - subnet: 10.120.0.0/16
+          gateway: 10.120.0.1
+
+  # Interface N3 - GTP-U entre gNB e UPF
+  b-net-n3:
+    driver: bridge
+    name: interface-n3
+    ipam:
+      config:
+        - subnet: 10.130.0.0/16
+          gateway: 10.130.0.1
+
+  # Interface N4 - PFCP entre SMF e UPF
+  b-net-n4:
+    driver: bridge
+    name: interface-n4
+    ipam:
+      config:
+        - subnet: 10.140.0.0/16
+          gateway: 10.140.0.1
+
+  # Interface N6 - Interface entre UPF e DN
+  b-net-n6:
+    driver: bridge
+    name: interface-n6
+    ipam:
+      config:
+        - subnet: 10.150.0.0/16
+          gateway: 10.150.0.1
+
+volumes:
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local

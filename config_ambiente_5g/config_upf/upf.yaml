@@ -1,0 +1,12 @@
+upf:
+  pfcp: # N4
+    server:
+      - address: 10.140.0.21
+  gtpu: # N3
+    server:
+      - address: 10.130.0.21
+
+  session:
+    - subnet: 10.45.0.0/16
+      gateway: 10.45.0.1
+      dev: ogstun

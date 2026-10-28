@@ -1,0 +1,29 @@
+smf:
+  sbi:
+    server:
+      - address: 10.110.0.12
+        port: 7777
+    client:
+      nrf:
+        - uri: http://10.110.0.10:7777
+
+  pfcp: # N4
+    server:
+      - address: 10.140.0.12
+    client:
+      upf:
+        - address: 10.140.0.21
+  gtpu:
+    server:
+      - address: 10.140.0.12
+
+  session:
+    - subnet: 10.45.0.0/16
+      gateway: 10.45.0.1
+      dnn: internet
+
+  dns:
+    - 8.8.8.8
+    - 8.8.4.4
+
+  mtu: 1400

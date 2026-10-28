@@ -1,0 +1,28 @@
+bianca@ebpf:~$ hostnamectl
+Static hostname: ebpf
+Icon name: computer-vm
+Chassis: vm
+Machine ID: 898ec8a2079d416aae3ccd1d43b5f342
+Boot ID: 7b89a45a53614156b1d8c777a70aa17d
+Virtualization: kvm
+Operating System: Ubuntu 22.04.5 LTS
+Kernel: Linux 5.15.0-174-generic
+Architecture: x86-64
+Hardware Vendor: QEMU
+Hardware Model: Standard PC i440FX + PIIX, 1996
+
+bianca@ebpf:~$ ip -br link show
+lo               UNKNOWN        00:00:00:00:00:00 <LOOPBACK,UP,LOWER_UP>
+ens18            UP             bc:24:11:94:ff:3a <BROADCAST,MULTICAST,UP,LOWER_UP>
+
+bianca@ebpf:~$ ethtool -i ens18
+driver: virtio_net
+version: 1.0.0
+firmware-version:
+expansion-rom-version:
+bus-info: 0000:00:12.0
+supports-statistics: yes
+supports-test: no
+supports-eeprom-access: no
+supports-register-dump: no
+supports-priv-flags: no
